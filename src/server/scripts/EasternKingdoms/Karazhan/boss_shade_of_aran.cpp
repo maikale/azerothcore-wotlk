@@ -55,7 +55,6 @@ enum ShadeOfAran
 
     //Creature Spells
     SPELL_CIRCULAR_BLIZZARD = 29951,
-    SPELL_WATERBOLT = 31012,
     SPELL_SHADOW_PYRO = 29978,
 
     //Creatures
@@ -76,6 +75,8 @@ enum Groups
     GROUP_FLAMEWREATH   = 0,
     GROUP_DRINKING      = 1
 };
+
+Position const roomCenter = {-11158.f, -1920.f};
 
 Position const elementalPos[4] =
 {
@@ -106,7 +107,7 @@ struct boss_shade_of_aran : public BossAI
     void Reset() override
     {
         BossAI::Reset();
-        drinkScheduler.CancelAll();
+        _drinkScheduler.CancelAll();
         LastSuperSpell = rand() % 3;
 
         for (uint8 i = 0; i < 3; ++i)
@@ -145,6 +146,11 @@ struct boss_shade_of_aran : public BossAI
                 }
             }
         });
+    }
+
+    bool CheckAranInRoom()
+    {
+        return me->GetDistance2d(roomCenter.GetPositionX(), roomCenter.GetPositionY()) < 45.0f;
     }
 
     void AttackStart(Unit* who) override
@@ -217,7 +223,7 @@ struct boss_shade_of_aran : public BossAI
                 libraryDoor->SetGoState(GO_STATE_READY);
                 libraryDoor->SetGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
             }
-        }).Schedule(1ms, [this](TaskContext context)
+        }).Schedule(1s, [this](TaskContext context)
         {
             if (!me->IsNonMeleeSpellCast(false) && !_drinking)
             {
@@ -357,7 +363,7 @@ struct boss_shade_of_aran : public BossAI
                 me->SetStandState(UNIT_STAND_STATE_SIT);
                 DoCastSelf(SPELL_DRINK, true);
                 _currentHealth = me->GetHealth();
-                drinkScheduler.Schedule(500ms, GROUP_DRINKING, [this](TaskContext context)
+                _drinkScheduler.Schedule(500ms, GROUP_DRINKING, [this](TaskContext context)
                 {
                     //check for damage to interrupt
                     if (me->GetHealth() < _currentHealth)
@@ -368,7 +374,7 @@ struct boss_shade_of_aran : public BossAI
                         me->SetPower(POWER_MANA, me->GetMaxPower(POWER_MANA) - 32000);
                         DoCastSelf(SPELL_POTION, false);
                         DoCastSelf(SPELL_AOE_PYROBLAST, false);
-                        drinkScheduler.CancelGroup(GROUP_DRINKING);
+                        _drinkScheduler.CancelGroup(GROUP_DRINKING);
                         _drinking = false;
                     } else
                     {
@@ -381,7 +387,7 @@ struct boss_shade_of_aran : public BossAI
                     me->SetPower(POWER_MANA, me->GetMaxPower(POWER_MANA) - 32000);
                     DoCastSelf(SPELL_POTION, true);
                     DoCastSelf(SPELL_AOE_PYROBLAST, false);
-                    drinkScheduler.CancelGroup(GROUP_DRINKING);
+                    _drinkScheduler.CancelGroup(GROUP_DRINKING);
                     _drinking = false;
                 });
                 context.Repeat(12s); //semi-arbitrary duration to envelop drinking duration
@@ -445,12 +451,18 @@ struct boss_shade_of_aran : public BossAI
     void UpdateAI(uint32 diff) override
     {
         scheduler.Update(diff);
-        drinkScheduler.Update(diff);
+        _drinkScheduler.Update(diff);
 
         if (!UpdateVictim())
             return;
 
-        if (_arcaneCooledDown && _fireCooledDown && _frostCooledDown)
+        if (!CheckAranInRoom())
+        {
+            EnterEvadeMode();
+            return;
+        }
+
+        if (_arcaneCooledDown && _fireCooledDown && _frostCooledDown && !_drinking)
             DoMeleeAttackIfReady();
     }
 
@@ -482,7 +494,7 @@ struct boss_shade_of_aran : public BossAI
         }
     }
 private:
-    TaskScheduler drinkScheduler;
+    TaskScheduler _drinkScheduler;
 
     bool _arcaneCooledDown;
     bool _fireCooledDown;
@@ -491,44 +503,7 @@ private:
     uint32 _currentHealth;
 };
 
-struct npc_aran_elemental : public ScriptedAI
-{
-    npc_aran_elemental(Creature* creature) : ScriptedAI(creature)
-    {
-        SetCombatMovement(false);
-        _scheduler.SetValidator([this]
-        {
-            return !me->HasUnitState(UNIT_STATE_CASTING);
-        });
-    }
-
-    void Reset() override
-    {
-        _scheduler.CancelAll();
-    }
-
-    void JustEngagedWith(Unit* /*who*/) override
-    {
-        _scheduler.Schedule(2s, [this](TaskContext context)
-        {
-            DoCastVictim(SPELL_WATERBOLT);
-            context.Repeat(2s);
-        });
-    }
-
-    void UpdateAI(uint32 diff) override
-    {
-        if (!UpdateVictim())
-            return;
-
-        _scheduler.Update(diff);
-    }
-private:
-    TaskScheduler _scheduler;
-};
-
 void AddSC_boss_shade_of_aran()
 {
     RegisterKarazhanCreatureAI(boss_shade_of_aran);
-    RegisterKarazhanCreatureAI(npc_aran_elemental);
 }
