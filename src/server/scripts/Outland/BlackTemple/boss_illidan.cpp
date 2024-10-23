@@ -207,7 +207,7 @@ struct boss_illidan_stormrage : public BossAI
         _canTalk = true;
         _dying = false;
         _inCutscene = false;
-        beamPosId = 0;
+        beamPosId = urand(0, MAX_EYE_BEAM_POS);
         me->ReplaceAllUnitFlags(UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
         me->SetDisableGravity(false);
         me->SetHover(false);
@@ -216,6 +216,7 @@ struct boss_illidan_stormrage : public BossAI
         me->SetStandState(UNIT_STAND_STATE_KNEEL);
         me->SetSheath(SHEATH_STATE_UNARMED);
         me->SetControlled(false, UNIT_STATE_ROOT);
+        me->SetCombatMovement(true);
 
         ScheduleHealthCheckEvent(90, [&] {
             // Call for minions
@@ -513,7 +514,7 @@ struct boss_illidan_stormrage : public BossAI
                         scheduler.CancelAll();
                         me->InterruptNonMeleeSpells(false);
                         me->SetControlled(false, UNIT_STATE_ROOT);
-                        beamPosId = (beamPosId + 1) % MAX_EYE_BEAM_POS;
+                        CycleBeamPos(beamPosId);
                         me->GetMotionMaster()->MovePoint(POINT_ILLIDAN_HOVER, airHoverPos[beamPosId], false, true);
                     }, 20s, GROUP_PHASE_FLYING);
                 });
@@ -685,6 +686,15 @@ private:
     bool _dying;
     bool _inCutscene;
     uint8 beamPosId;
+
+    void CycleBeamPos(uint8 &beamPosId)
+    {
+        uint8 _incumbentBeamPos = urand(0, MAX_EYE_BEAM_POS);
+        if (_incumbentBeamPos == beamPosId)
+            CycleBeamPos(beamPosId);
+        else
+            beamPosId = _incumbentBeamPos;
+    }
 };
 
 enum Akama
