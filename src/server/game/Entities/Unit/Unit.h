@@ -1758,6 +1758,7 @@ public:
     // Pets, guardians, minions...
     [[nodiscard]] Guardian* GetGuardianPet() const;
     [[nodiscard]] Minion* GetFirstMinion() const;
+    [[nodiscard]] Creature* GetCompanionPet() const;
 
     Pet* CreateTamedPetFrom(Creature* creatureTarget, uint32 spell_id = 0);
     Pet* CreateTamedPetFrom(uint32 creatureEntry, uint32 spell_id = 0);
@@ -1950,9 +1951,6 @@ public:
 
     float m_threatModifier[MAX_SPELL_SCHOOL];
     float m_modAttackSpeedPct[3];
-
-    // Event handler
-    EventProcessor m_Events;
 
     SpellImmuneList m_spellImmune[MAX_SPELL_IMMUNITY];
     uint32 m_lastSanctuaryTime;
