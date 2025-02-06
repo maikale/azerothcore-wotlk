@@ -1738,6 +1738,10 @@ public:
     [[nodiscard]] bool HasTalent(uint32 spell_id, uint8 spec) const;
 
     [[nodiscard]] uint32 CalculateTalentsPoints() const;
+    void SetBonusTalentCount(uint32 count) { m_extraBonusTalentCount = count; };
+    uint32 GetBonusTalentCount() { return m_extraBonusTalentCount; };
+    void AddBonusTalent(uint32 count) { m_extraBonusTalentCount += count; };
+    void RemoveBonusTalent(uint32 count) { m_extraBonusTalentCount -= count; };
 
     // Dual Spec
     void UpdateSpecCount(uint8 count);
@@ -2071,6 +2075,7 @@ public:
     void LeftChannel(Channel* c);
     void CleanupChannels();
     void ClearChannelWatch();
+    void UpdateLFGChannel();
     void UpdateLocalChannels(uint32 newZone);
 
     void UpdateDefense();
@@ -2406,7 +2411,7 @@ public:
     void SetAtLoginFlag(AtLoginFlags f) { m_atLoginFlags |= f; }
     void RemoveAtLoginFlag(AtLoginFlags flags, bool persist = false);
 
-    bool isUsingLfg();
+    bool IsUsingLfg();
     bool inRandomLfgDungeon();
 
     typedef std::set<uint32> DFQuestsDoneList;
