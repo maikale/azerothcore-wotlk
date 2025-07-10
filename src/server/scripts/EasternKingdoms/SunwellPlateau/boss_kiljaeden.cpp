@@ -381,14 +381,8 @@ struct boss_kiljaeden : public BossAI
                     if (Creature* anveena = instance->GetCreature(DATA_ANVEENA))
                     {
                         anveena->RemoveAllAuras();
-                        anveena->DespawnOrUnsummon(3500);
-                    }
-                }, 34s);
-
-                me->m_Events.AddEventAtOffset([&] {
-                    if (Creature* anveena = instance->GetCreature(DATA_ANVEENA))
-                    {
                         anveena->CastSpell(anveena, SPELL_SACRIFICE_OF_ANVEENA, true);
+                        anveena->DespawnOrUnsummon(1500);
                         DoCastSelf(SPELL_CUSTOM_08_STATE, true);
                         me->SetUnitFlag(UNIT_FLAG_PACIFIED);
                         scheduler.CancelAll();
@@ -1003,6 +997,9 @@ class spell_kiljaeden_sinister_reflection_clone : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        if (targets.empty())
+            return;
+
         targets.sort(Acore::ObjectDistanceOrderPred(GetCaster()));
         WorldObject* target = targets.front();
 
@@ -1052,6 +1049,9 @@ class spell_kiljaeden_darkness_aura : public AuraScript
 
     void HandleRemove(AuraEffect const*  /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
+        if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+            return;
+
         if (GetUnitOwner()->IsCreature())
             GetUnitOwner()->ToCreature()->AI()->DoAction(ACTION_NO_KILL_TALK);
 
@@ -1157,6 +1157,8 @@ class spell_kiljaeden_armageddon_missile : public SpellScript
     }
 };
 
+// 45856 - Breath: Haste
+// 45860 - Breath: Revitalize
 class spell_kiljaeden_dragon_breath : public SpellScript
 {
     PrepareSpellScript(spell_kiljaeden_dragon_breath);
@@ -1166,9 +1168,16 @@ class spell_kiljaeden_dragon_breath : public SpellScript
         targets.remove_if(Acore::UnitAuraCheck(true, SPELL_VENGEANCE_OF_THE_BLUE_FLIGHT));
     }
 
+    void HandleHit(SpellEffIndex /*effindex*/)
+    {
+        if (Unit* target = GetHitUnit())
+            target->RemoveMovementImpairingAuras(false);
+    }
+
     void Register() override
     {
         OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_kiljaeden_dragon_breath::FilterTargets, EFFECT_ALL, TARGET_UNIT_CONE_ALLY);
+        OnEffectHitTarget += SpellEffectFn(spell_kiljaeden_dragon_breath::HandleHit, EFFECT_ALL, SPELL_EFFECT_ANY);
     }
 };
 
